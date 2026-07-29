@@ -1,0 +1,1 @@
+export default function Background(){return <div className="background"><div className="grid"/><div className="glow a"/><div className="glow b"/><div className="line one"/><div className="line two"/></div>}

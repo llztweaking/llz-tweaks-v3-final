@@ -1,0 +1,1 @@
+import{motion}from'framer-motion';import Brand from'./Brand';export default function Splash(){return <motion.div className="splash" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0,scale:1.02}}><Brand/><div className="loader"><span/></div><small>Inicializando LLZ Core</small></motion.div>}

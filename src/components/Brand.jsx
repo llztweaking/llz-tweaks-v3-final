@@ -1,0 +1,1 @@
+import logo from'../assets/logo.png';export default function Brand({compact=false}){return <div className={'brand '+(compact?'compact':'')}><img src={logo}/>{!compact&&<div><strong>LLZ TWEAKS</strong><span>Performance Suite</span></div>}</div>}
