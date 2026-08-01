@@ -3,3 +3,5 @@ dist
 .env
 *.log
 release
+drivers/vcredist
+drivers/directx

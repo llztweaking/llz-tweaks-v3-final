@@ -159,7 +159,10 @@ function getDriversDir(){
 // O botão só aparece no painel se o arquivo realmente existir (ver drivers:list).
 // silent:true + args = instalador roda sem UI e o resultado reflete o exit code real.
 // silent:false (padrão) = só abre o instalador (wizard com UI) e não espera terminar.
-const driverEntries=[]
+const driverEntries=[
+ {id:'vcredist-all',name:'Visual C++ Redistributáveis (Todos)',description:'Instala silenciosamente os pacotes redistribuíveis do Visual C++ (2005 a 2022, x86 e x64). Exigido pela maioria dos jogos e programas.',file:'vcredist/install_all.bat',silent:true,timeout:600000},
+ {id:'directx-runtime',name:'DirectX End-User Runtime',description:'Instala silenciosamente o runtime completo do DirectX (9, 10 e 11), exigido por muitos jogos.',file:'directx/DXSETUP.exe',args:['/silent'],silent:true,timeout:180000}
+]
 function runDriverInstaller(entry){
  const filePath=path.join(getDriversDir(),entry.file)
  if(!fs.existsSync(filePath))return Promise.reject(new Error('Arquivo do driver não encontrado nesta instalação.'))
