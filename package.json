@@ -1,28 +1,35 @@
 {
   "name": "llz-tweaks-v3-final",
-  "version": "3.0.0",
+  "version": "3.1.0",
+  "description": "LLZ Tweaks - Performance Suite para Windows e jogos competitivos.",
+  "author": "LLZ Tweaks",
   "private": true,
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "build": "vite build",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "postinstall": "patch-package"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.52.0",
+    "electron-updater": "^6.8.9",
     "framer-motion": "^12.23.6",
     "lucide-react": "^0.468.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-router-dom": "^7.6.3",
-    "@supabase/supabase-js": "^2.52.0"
+    "react-router-dom": "^7.6.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.4.1",
     "concurrently": "^9.1.2",
     "electron": "^36.4.0",
+    "electron-builder": "^26.15.4",
+    "patch-package": "^8.0.1",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.3",
     "vite": "^6.3.5",
-    "wait-on": "^8.0.3",
-    "electron-builder": "^26.0.12"
+    "wait-on": "^8.0.3"
   },
   "build": {
     "appId": "com.llztweaks.app",
@@ -33,11 +40,25 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "scripts/**/*",
+      "drivers/**/*",
       "src/assets/logo.png",
+      "build/icon.ico",
       "package.json"
     ],
+    "asarUnpack": [
+      "scripts/**/*",
+      "drivers/**/*"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "llztweaking",
+      "repo": "llz-tweaks-v3-final"
+    },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico",
+      "requestedExecutionLevel": "requireAdministrator"
     },
     "nsis": {
       "oneClick": false,
