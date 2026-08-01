@@ -3,8 +3,18 @@ const {autoUpdater}=require('electron-updater')
 const path=require('path'),os=require('os'),fs=require('fs'),http=require('http')
 const {execFile}=require('child_process')
 const {getMotherboardInfo}=require('./services/motherboard.cjs')
+// O app roda sempre elevado (requireAdministrator), e o sandbox de processos do Chromium
+// (usado pelo processo de GPU/renderer) não é compatível com um processo pai já elevado no
+// Windows — isso derruba o app inteiro logo na abertura ("GPU process isn't usable. Goodbye.").
+// Como o processo inteiro já roda como Administrador, o sandbox interno do Chromium não
+// adiciona proteção real aqui mesmo.
+app.commandLine.appendSwitch('no-sandbox')
+app.commandLine.appendSwitch('disable-gpu-sandbox')
 app.setName('LLZ Tweaks')
 if(process.platform==='win32')app.setAppUserModelId('com.llztweaks.app')
+if(!app.requestSingleInstanceLock()){
+ app.quit()
+}
 let win
 let tray=null
 let isQuitting=false
@@ -273,6 +283,7 @@ function create(){
   autoUpdater.checkForUpdates().catch(()=>{})
  }
 }
+app.on('second-instance',()=>{win?.show();win?.focus()})
 app.on('before-quit',()=>{isQuitting=true})
 ipcMain.handle('window:minimize',()=>win.minimize())
 ipcMain.handle('window:maximize',()=>{win.isMaximized()?win.unmaximize():win.maximize();return win.isMaximized()})
