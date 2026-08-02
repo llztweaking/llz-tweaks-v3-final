@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Cog } from 'lucide-react'
 import HoloMouse from '../components/HoloMouse'
+import { useLanguage } from '../lib/i18n/LanguageContext'
 
 export default function Precision() {
+  const { t } = useLanguage()
   const [glitching, setGlitching] = useState(true)
 
   useEffect(() => {
@@ -15,9 +17,9 @@ export default function Precision() {
     <motion.div className="page" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
       <header className="page-head">
         <div>
-          <small>LLZ PRECISION</small>
-          <h1>LLZ Precision</h1>
-          <p>Um novo painel dedicado à precisão do seu mouse está a caminho.</p>
+          <small>{t('precision.eyebrow')}</small>
+          <h1>{t('precision.title')}</h1>
+          <p>{t('precision.subtitle')}</p>
         </div>
       </header>
 

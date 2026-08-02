@@ -3,18 +3,15 @@ import { motion } from 'framer-motion'
 import { RefreshCw, Layers } from 'lucide-react'
 import { supabase } from '../services/supabase'
 import OptimizationCard from '../components/OptimizationCard'
+import { useLanguage } from '../lib/i18n/LanguageContext'
 
 const ICONS = {
   'amd-events-restart': RefreshCw,
   'amd-shader-cache-clear': Layers
 }
 
-const NOTES = {
-  'amd-events-restart': 'Seguro: reinicia apenas o serviço de eventos do Radeon Software, sem afetar suas configurações.',
-  'amd-shader-cache-clear': 'Ação não reversível. Jogos podem demorar um pouco mais para carregar na próxima execução.'
-}
-
 export default function Amd() {
+  const { t } = useLanguage()
   const [actions, setActions] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -32,18 +29,18 @@ export default function Amd() {
     <motion.div className="page" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
       <header className="page-head">
         <div>
-          <small>AMD</small>
-          <h1>Otimizações AMD</h1>
-          <p>Detectamos uma placa de vídeo AMD no seu sistema. Ajustes específicos para o driver e serviços AMD.</p>
+          <small>{t('amd.eyebrow')}</small>
+          <h1>{t('amd.title')}</h1>
+          <p>{t('amd.subtitle')}</p>
         </div>
       </header>
 
       {loading ? (
-        <p>Carregando...</p>
+        <p>{t('common.loading')}</p>
       ) : actions.length === 0 ? (
         <div className="empty">
-          <h2>Em breve</h2>
-          <p>Novas otimizações específicas para GPUs AMD estão a caminho.</p>
+          <h2>{t('common.comingSoon')}</h2>
+          <p>{t('amd.comingSoonBody')}</p>
         </div>
       ) : (
         <section className="metrics opt-grid">
@@ -52,7 +49,6 @@ export default function Amd() {
               key={action.id}
               action={action}
               icon={ICONS[action.id]}
-              note={NOTES[action.id]}
             />
           ))}
         </section>

@@ -4,26 +4,26 @@ import { Crown } from 'lucide-react'
 import Brand from '../components/Brand'
 import DiscordIcon from '../components/DiscordIcon'
 import { TEAM } from '../lib/team'
+import { useLanguage } from '../lib/i18n/LanguageContext'
+import { teamRole } from '../lib/i18n/dynamicText'
 
 export default function About() {
+  const { t } = useLanguage()
   const navigate = useNavigate()
 
   return (
     <motion.div className="page" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
       <header className="page-head">
         <div>
-          <small>PROJETO</small>
-          <h1>Sobre o LLZ Tweaks</h1>
-          <p>Performance Suite para Windows e jogos competitivos.</p>
+          <small>{t('about.eyebrow')}</small>
+          <h1>{t('about.title')}</h1>
+          <p>{t('about.subtitle')}</p>
         </div>
       </header>
 
       <section className="card about">
         <Brand />
-        <p>
-          O LLZ Tweaks otimiza seu sistema e seus jogos competitivos (CS2, Valorant, Fortnite, FiveM) em poucos
-          cliques, com diagnóstico real do seu hardware e licenciamento seguro — tudo em um único painel.
-        </p>
+        <p>{t('about.body')}</p>
 
         <div className="credits">
           {TEAM.map((person) => (
@@ -36,13 +36,13 @@ export default function About() {
                 </div>
               </div>
               <strong>{person.name}</strong>
-              <span className="credit-role">{person.role}</span>
+              <span className="credit-role">{teamRole(t, person)}</span>
               <span className="credit-discord"><DiscordIcon height={12} />{person.discord}</span>
             </div>
           ))}
         </div>
 
-        <button className="link-button" onClick={() => navigate('/terms')}>Termos de Uso</button>
+        <button className="link-button" onClick={() => navigate('/terms')}>{t('settings.termsButton')}</button>
       </section>
     </motion.div>
   )

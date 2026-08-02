@@ -9,8 +9,10 @@ import GlitchPhrases from '../components/GlitchPhrases'
 import DiscordIcon from '../components/DiscordIcon'
 import { supabase } from '../services/supabase'
 import { setConnectedDiscord, extractDiscordIdentity } from '../lib/discordAccount'
+import { useLanguage } from '../lib/i18n/LanguageContext'
 
 export default function Register({ onBack, onRegistered }) {
+  const { t } = useLanguage()
   const [license, setLicense] = useState('')
   const [discordUser, setDiscordUser] = useState(null)
   const [connecting, setConnecting] = useState(false)
@@ -19,7 +21,7 @@ export default function Register({ onBack, onRegistered }) {
 
   async function connectDiscord() {
     if (!supabase) {
-      setError('Serviço de contas indisponível. Tente novamente mais tarde.')
+      setError(t('register.errServiceUnavailable'))
       return
     }
     setError('')
@@ -30,7 +32,7 @@ export default function Register({ onBack, onRegistered }) {
         provider: 'discord',
         options: { redirectTo: `http://127.0.0.1:${port}/callback`, skipBrowserRedirect: true }
       })
-      if (oauthError || !data?.url) throw new Error('Não foi possível iniciar a conexão com o Discord.')
+      if (oauthError || !data?.url) throw new Error(t('register.errOauthStart'))
 
       await window.llz.system.openExternal(data.url)
       const tokens = await window.llz.auth.discordWait()
@@ -42,14 +44,14 @@ export default function Register({ onBack, onRegistered }) {
       if (sessionError) throw sessionError
 
       const { data: userData, error: userError } = await supabase.auth.getUser()
-      if (userError || !userData?.user) throw new Error('Não foi possível confirmar a conta do Discord.')
+      if (userError || !userData?.user) throw new Error(t('register.errConfirmDiscord'))
 
       const identity = extractDiscordIdentity(userData.user)
-      if (!identity) throw new Error('Conta conectada não tem um Discord vinculado.')
+      if (!identity) throw new Error(t('register.errNoDiscordLinked'))
 
       setDiscordUser(identity)
     } catch (err) {
-      setError(err.message || 'Não foi possível conectar ao Discord.')
+      setError(err.message || t('register.errConnectFailed'))
     } finally {
       setConnecting(false)
     }
@@ -58,15 +60,15 @@ export default function Register({ onBack, onRegistered }) {
   async function submit(event) {
     event.preventDefault()
     if (!discordUser) {
-      setError('Conecte a conta do Discord que você usou na compra.')
+      setError(t('register.errNeedDiscordConnect'))
       return
     }
     if (!license.trim()) {
-      setError('Digite a key que foi enviada a você.')
+      setError(t('register.errNeedLicense'))
       return
     }
     if (!supabase) {
-      setError('Serviço de licenças indisponível. Tente novamente mais tarde.')
+      setError(t('register.errLicenseServiceUnavailable'))
       return
     }
 
@@ -78,13 +80,13 @@ export default function Register({ onBack, onRegistered }) {
     setLoading(false)
 
     if (rpcError) {
-      setError('Erro ao vincular a key. Tente novamente.')
+      setError(t('register.errLinkFailed'))
       return
     }
 
     const result = data?.[0]
     if (!result?.ok) {
-      setError(result?.message || 'Não foi possível vincular a key.')
+      setError(result?.message || t('register.errLinkFailedGeneric'))
       return
     }
 
@@ -96,7 +98,7 @@ export default function Register({ onBack, onRegistered }) {
     <div className="shell">
       <Background />
       <header className="titlebar">
-        <div><Brand compact /><span>Cadastro</span></div>
+        <div><Brand compact /><span>{t('register.titlebarLabel')}</span></div>
         <small>LLZ Tweaks 3.0.0</small>
         <WindowControls />
       </header>
@@ -112,14 +114,14 @@ export default function Register({ onBack, onRegistered }) {
             <Brand />
 
             <div className="login-head">
-              <small>CADASTRO</small>
-              <h1>Vincule sua conta</h1>
-              <p>Conecte a conta do Discord que você usou na compra e registre a key que foi enviada a você.</p>
+              <small>{t('register.eyebrow')}</small>
+              <h1>{t('register.title')}</h1>
+              <p>{t('register.subtitle')}</p>
             </div>
 
             <form className="login-form" onSubmit={submit}>
               <label>
-                <span>Discord</span>
+                <span>{t('register.discordLabel')}</span>
                 {discordUser ? (
                   <div className="discord-connected">
                     {discordUser.avatarUrl ? (
@@ -129,26 +131,26 @@ export default function Register({ onBack, onRegistered }) {
                     )}
                     <div className="discord-connected-info">
                       <strong>{discordUser.username}</strong>
-                      <span><CheckCircle2 size={11} /> Conectado</span>
+                      <span><CheckCircle2 size={11} /> {t('register.connected')}</span>
                     </div>
                     <button type="button" className="discord-swap-btn" onClick={() => setDiscordUser(null)}>
-                      Trocar
+                      {t('register.swap')}
                     </button>
                   </div>
                 ) : (
                   <button type="button" className="discord-connect-btn" onClick={connectDiscord} disabled={connecting}>
                     {connecting ? <Loader2 size={14} className="opt-spin" /> : <DiscordIcon height={14} />}
-                    {connecting ? 'Aguardando o Discord...' : 'Conectar com Discord'}
+                    {connecting ? t('register.waitingDiscord') : t('register.connectButton')}
                   </button>
                 )}
               </label>
 
               <label>
-                <span>Key da compra</span>
+                <span>{t('register.licenseLabel')}</span>
                 <input
                   value={license}
                   onChange={(e) => setLicense(e.target.value)}
-                  placeholder="LLZ-XXXX-XXXX"
+                  placeholder={t('register.licensePlaceholder')}
                   autoComplete="off"
                   spellCheck="false"
                 />
@@ -157,7 +159,7 @@ export default function Register({ onBack, onRegistered }) {
               {error && <div className="login-error">{error}</div>}
 
               <button type="submit" className="login-submit" disabled={loading}>
-                {loading ? 'Cadastrando...' : <>Concluir cadastro <ArrowRight size={16} /></>}
+                {loading ? t('register.submitting') : <>{t('register.submit')} <ArrowRight size={16} /></>}
               </button>
             </form>
 
@@ -168,12 +170,12 @@ export default function Register({ onBack, onRegistered }) {
               whileTap={{ scale: 0.96 }}
               onClick={onBack}
             >
-              <ArrowLeft size={14} /> Voltar para o login
+              <ArrowLeft size={14} /> {t('register.backButton')}
             </motion.button>
 
             <div className="login-foot">
               <ShieldCheck size={13} />
-              <span>A key só pode ser vinculada a uma conta do Discord.</span>
+              <span>{t('register.footNote')}</span>
             </div>
           </motion.section>
         </div>

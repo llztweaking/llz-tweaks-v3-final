@@ -4,10 +4,56 @@ import {
   RotateCcw, Trash2, Gauge, Loader2,
   Gamepad2, RefreshCw, MousePointer2, Keyboard, Sparkles, Zap, Wifi, Network,
   HardDrive, Layers, Download, Image as ImageIcon, ShieldCheck, Wrench, MemoryStick, Clock, Timer,
-  Rocket, Eraser, PlayCircle, CheckCircle2
+  Rocket, Eraser, PlayCircle, CheckCircle2, Terminal, XCircle
 } from 'lucide-react'
 import { supabase } from '../services/supabase'
 import OptimizationCard from '../components/OptimizationCard'
+import { useLanguage } from '../lib/i18n/LanguageContext'
+
+const ESSENTIAL_SERVICES_ID = 'restore-essential-services'
+
+function VerifyServicesCard({ t }) {
+  const [status, setStatus] = useState('idle')
+  const [output, setOutput] = useState('')
+
+  async function open() {
+    setStatus('running')
+    try {
+      const result = await window.llz?.services.verifyEssential()
+      setStatus('done')
+      setOutput(result || t('optimizations.verifyServicesOpened'))
+    } catch (err) {
+      setStatus('error')
+      setOutput(err.message || t('optimizations.verifyServicesFailed'))
+    }
+  }
+
+  return (
+    <article className="card metric opt-card warning">
+      <Terminal size={20} />
+      <span>{t('optimizations.verifyServicesTitle')}</span>
+      <small>{t('optimizations.verifyServicesDesc')}</small>
+
+      <button className="opt-run" disabled={status === 'running'} onClick={open}>
+        {status === 'running' ? <Loader2 size={14} className="opt-spin" /> : t('optimizations.verifyServicesButton')}
+      </button>
+
+      {status === 'done' && output && (
+        <div className="opt-result ok">
+          <CheckCircle2 size={13} />
+          <span>{output}</span>
+        </div>
+      )}
+      {status === 'error' && (
+        <div className="opt-result err">
+          <XCircle size={13} />
+          <span>{output}</span>
+        </div>
+      )}
+      <small className="opt-note">{t('common.adminRequired')}</small>
+    </article>
+  )
+}
 
 const ICONS = {
   'restore-defaults': RotateCcw,
@@ -43,36 +89,17 @@ const ICONS = {
   'mouse-input-lag-off': MousePointer2
 }
 
-const NOTES = {
-  'safe-cleanup': 'Ação não reversível: arquivos apagados não podem ser recuperados.',
-  'empty-recycle-bin': 'Ação não reversível: itens da lixeira são apagados permanentemente.',
-  'clear-prefetch': 'Ação não reversível.',
-  'windows-update-cache-clear': 'Ação não reversível.',
-  'thumbcache-clear': 'Ação não reversível. As miniaturas são recriadas automaticamente com o tempo.',
-  'dx-shader-cache-clear': 'Ação não reversível. Os jogos podem demorar um pouco mais para carregar na próxima execução.',
-  'winsock-reset': 'Pode ser necessário reiniciar o computador para concluir.',
-  'tcpip-reset': 'Pode ser necessário reiniciar o computador para concluir.',
-  'sfc-scan': 'Pode levar vários minutos.',
-  'dism-repair': 'Pode levar vários minutos.',
-  'chkdsk-schedule': 'Será executado na próxima reinicialização do Windows.',
-  'ultimate-performance': 'Disponível apenas em algumas versões do Windows.',
-  'memory-usage-performance': 'Ajusta o gerenciamento de memória do NTFS para priorizar desempenho em vez de economia de RAM.',
-  'platform-tick-on': 'Requer reinicialização do Windows para ter efeito.',
-  'disable-dynamictick-on': 'Requer reinicialização do Windows para ter efeito. Reduz microtravamentos (stutters) em jogos.',
-  'standby-list-clear': 'Ação pontual: libera memória em espera na hora, sem alterar configurações persistentes.',
-  'restore-essential-services': 'Segura: só reativa serviços essenciais que estejam parados ou desativados, sem alterar mais nada.'
-}
-
-const TABS = [
-  { key: 'sistema', label: 'Windows', categories: ['jogos', 'interface', 'limpeza', 'windows'] },
-  { key: 'energia', label: 'Energia', categories: ['energia'] },
-  { key: 'armazenamento', label: 'Armazenamento', categories: ['armazenamento'] },
-  { key: 'mouse-teclado', label: 'Mouse & Teclado', categories: ['mouse', 'teclado'] },
-  { key: 'internet', label: 'Internet', categories: ['internet'] },
-  { key: 'reparo', label: 'Reparo', categories: ['reparo'] }
-]
-
 export default function Optimizations() {
+  const { t } = useLanguage()
+  const TABS = [
+    { key: 'sistema', label: t('optimizations.tabWindows'), categories: ['jogos', 'interface', 'limpeza', 'windows'] },
+    { key: 'energia', label: t('optimizations.tabEnergy'), categories: ['energia'] },
+    { key: 'armazenamento', label: t('optimizations.tabStorage'), categories: ['armazenamento'] },
+    { key: 'mouse-teclado', label: t('optimizations.tabMouseKeyboard'), categories: ['mouse', 'teclado'] },
+    { key: 'internet', label: t('optimizations.tabInternet'), categories: ['internet'] },
+    { key: 'reparo', label: t('optimizations.tabRepair'), categories: ['reparo'] },
+    { key: 'servicos-essenciais', label: t('optimizations.tabEssentialServices'), categories: [] }
+  ]
   const [actions, setActions] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('sistema')
@@ -96,6 +123,10 @@ export default function Optimizations() {
   const actionsByTab = useMemo(() => {
     const map = Object.fromEntries(TABS.map((t) => [t.key, []]))
     for (const action of actions) {
+      if (action.id === ESSENTIAL_SERVICES_ID) {
+        map['servicos-essenciais']?.push(action)
+        continue
+      }
       const tab = TABS.find((t) => t.categories.includes(action.category))
       if (tab) map[tab.key].push(action)
     }
@@ -127,9 +158,9 @@ export default function Optimizations() {
     <motion.div className="page" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
       <header className="page-head">
         <div>
-          <small>OTIMIZAÇÕES</small>
-          <h1>Otimizações do sistema</h1>
-          <p>Execute ajustes seguros de desempenho, energia, rede e manutenção do Windows.</p>
+          <small>{t('optimizations.eyebrow')}</small>
+          <h1>{t('optimizations.title')}</h1>
+          <p>{t('optimizations.subtitle')}</p>
         </div>
       </header>
 
@@ -147,22 +178,13 @@ export default function Optimizations() {
       </nav>
 
       {loading ? (
-        <p>Carregando...</p>
+        <p>{t('common.loading')}</p>
       ) : currentActions.length === 0 ? (
-        <p>Nenhuma otimização disponível nesta categoria ainda.</p>
-      ) : (
+        <p>{t('optimizations.noneInCategory')}</p>
+      ) : activeTab === 'servicos-essenciais' ? (
         <>
-          <div className="opt-bulk">
-            <button className="opt-run opt-bulk-run" disabled={bulkRunning || currentActions.length === 0} onClick={runAll}>
-              {bulkRunning ? (
-                <><Loader2 size={14} className="opt-spin" /> Otimizando...</>
-              ) : bulkDone ? (
-                <><CheckCircle2 size={14} /> Otimizado com sucesso</>
-              ) : (
-                <><PlayCircle size={14} /> Otimizar tudo nesta aba</>
-              )}
-            </button>
-            <small>Executa, uma por uma, todas as otimizações disponíveis para o seu plano nesta aba.</small>
+          <div className="section-heading essential-services-heading">
+            <h3>{t('optimizations.essentialServicesSectionTitle')}</h3>
           </div>
           <section className="metrics opt-grid">
             {currentActions.map((action) => (
@@ -171,7 +193,34 @@ export default function Optimizations() {
                 ref={(el) => { cardRefs.current[action.id] = el }}
                 action={action}
                 icon={ICONS[action.id]}
-                note={NOTES[action.id]}
+                variant="warning"
+                confirmMessage={t('optimizations.confirmRestoreServicesBody')}
+              />
+            ))}
+            <VerifyServicesCard t={t} />
+          </section>
+        </>
+      ) : (
+        <>
+          <div className="opt-bulk">
+            <button className="opt-run opt-bulk-run" disabled={bulkRunning || currentActions.length === 0} onClick={runAll}>
+              {bulkRunning ? (
+                <><Loader2 size={14} className="opt-spin" /> {t('optimizations.runningAll')}</>
+              ) : bulkDone ? (
+                <><CheckCircle2 size={14} /> {t('optimizations.allDone')}</>
+              ) : (
+                <><PlayCircle size={14} /> {t('optimizations.runAllTab')}</>
+              )}
+            </button>
+            <small>{t('optimizations.runAllHint')}</small>
+          </div>
+          <section className="metrics opt-grid">
+            {currentActions.map((action) => (
+              <OptimizationCard
+                key={action.id}
+                ref={(el) => { cardRefs.current[action.id] = el }}
+                action={action}
+                icon={ICONS[action.id]}
               />
             ))}
           </section>

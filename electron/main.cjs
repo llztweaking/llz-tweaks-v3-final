@@ -187,6 +187,18 @@ function runDriverInstaller(entry){
   })
  })
 }
+function openEssentialServicesTerminal(){
+ const scriptPath=path.join(getScriptsDir(),'verify-essential-services.bat')
+ if(!fs.existsSync(scriptPath))return Promise.reject(new Error('Script não encontrado nesta instalação.'))
+ const literalPath=scriptPath.replace(/'/g,"''")
+ const command=`Start-Process -FilePath '${literalPath}' -Verb RunAs`
+ return new Promise((resolve,reject)=>{
+  execFile('powershell.exe',['-NoProfile','-NonInteractive','-Command',command],{windowsHide:true,timeout:15000},(err)=>{
+   if(err)return reject(new Error('Não foi possível abrir o terminal (permissão de administrador negada ou cancelada).'))
+   resolve('Terminal aberto com permissão de administrador.')
+  })
+ })
+}
 function runScriptFile(file,timeoutMs=20000){
  if(!file)return Promise.reject(new Error('Script desconhecido.'))
  const scriptPath=path.join(getScriptsDir(),file)
@@ -338,6 +350,10 @@ ipcMain.handle('system:benchmarks',()=>getBenchmarks())
 ipcMain.handle('system:motherboard',()=>getMotherboardInfo())
 ipcMain.handle('system:open-external',(_event,url)=>{
  if(typeof url==='string' && /^https:\/\//.test(url))shell.openExternal(url)
+})
+ipcMain.handle('services:verify-essential',()=>{
+ if(!isSessionValid())return Promise.reject(new Error('Sessão inválida ou expirada. Faça login novamente.'))
+ return openEssentialServicesTerminal()
 })
 ipcMain.handle('drivers:list',()=>driverEntries.map((d)=>({id:d.id,name:d.name,description:d.description,available:fs.existsSync(path.join(getDriversDir(),d.file))})))
 ipcMain.handle('drivers:install',(_event,id)=>{

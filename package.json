@@ -1,6 +1,6 @@
 {
   "name": "llz-tweaks-v3-final",
-  "version": "3.2.2",
+  "version": "3.3.0",
   "description": "LLZ Tweaks - Performance Suite para Windows e jogos competitivos.",
   "author": "LLZ Tweaks",
   "private": true,
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.52.0",
+    "country-flag-icons": "^1.6.20",
     "electron-updater": "^6.8.9",
     "framer-motion": "^12.23.6",
     "lucide-react": "^0.468.0",

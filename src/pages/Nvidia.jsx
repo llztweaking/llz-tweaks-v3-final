@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { BellOff, RefreshCw, Layers, Zap, Sparkles } from 'lucide-react'
 import { supabase } from '../services/supabase'
 import OptimizationCard from '../components/OptimizationCard'
+import { useLanguage } from '../lib/i18n/LanguageContext'
 
 const ICONS = {
   'nvidia-telemetry-off': BellOff,
@@ -12,15 +13,9 @@ const ICONS = {
   'nvidia-apply-profile': Sparkles
 }
 
-const NOTES = {
-  'nvidia-driver-restart': 'Seguro: reinicia apenas o serviço do driver, sem afetar suas configurações.',
-  'nvidia-shader-cache-clear': 'Ação não reversível. Jogos podem demorar um pouco mais para carregar na próxima execução.',
-  'nvidia-apply-profile': 'Ação pontual: aplica um conjunto de ajustes de driver de uma vez. Não possui reversão automática.'
-}
-
 const ADVANCED_IDS = ['nvidia-power-state-lock', 'nvidia-apply-profile']
 
-function AdvancedModal({ actions, onClose }) {
+function AdvancedModal({ actions, onClose, t }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <motion.section
@@ -30,28 +25,29 @@ function AdvancedModal({ actions, onClose }) {
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="section-heading">
-          <h3>Otimizações Avançadas NVIDIA</h3>
-          <button className="link-button" onClick={onClose}>Fechar</button>
+          <h3>{t('nvidia.modalTitle')}</h3>
+          <button className="link-button" onClick={onClose}>{t('nvidia.close')}</button>
         </div>
-        <p className="modal-subtitle">Ajustes de driver mais específicos, recomendados para jogos competitivos.</p>
+        <p className="modal-subtitle">{t('nvidia.modalSubtitle')}</p>
 
         {actions.length === 0 ? (
-          <p>Nenhuma otimização avançada disponível no momento.</p>
+          <p>{t('nvidia.noneAvailable')}</p>
         ) : (
           <section className="metrics opt-grid">
             {actions.map((action) => (
-              <OptimizationCard key={action.id} action={action} icon={ICONS[action.id]} note={NOTES[action.id]} />
+              <OptimizationCard key={action.id} action={action} icon={ICONS[action.id]} />
             ))}
           </section>
         )}
 
-        <p className="modal-credit">Perfil de driver aplicado com NVIDIA Profile Inspector (Orbmu2k, licença MIT).</p>
+        <p className="modal-credit">{t('nvidia.credit')}</p>
       </motion.section>
     </div>
   )
 }
 
 export default function Nvidia() {
+  const { t } = useLanguage()
   const [actions, setActions] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -73,36 +69,36 @@ export default function Nvidia() {
     <motion.div className="page" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
       <header className="page-head">
         <div>
-          <small>NVIDIA</small>
-          <h1>Otimizações NVIDIA</h1>
-          <p>Detectamos uma placa de vídeo NVIDIA no seu sistema. Ajustes específicos para o driver e serviços NVIDIA.</p>
+          <small>{t('nvidia.eyebrow')}</small>
+          <h1>{t('nvidia.title')}</h1>
+          <p>{t('nvidia.subtitle')}</p>
         </div>
       </header>
 
       {loading ? (
-        <p>Carregando...</p>
+        <p>{t('common.loading')}</p>
       ) : mainActions.length === 0 && advancedActions.length === 0 ? (
         <div className="empty">
-          <h2>Em breve</h2>
-          <p>Novas otimizações específicas para GPUs NVIDIA estão a caminho.</p>
+          <h2>{t('common.comingSoon')}</h2>
+          <p>{t('nvidia.comingSoonBody')}</p>
         </div>
       ) : (
         <section className="metrics opt-grid">
           {mainActions.map((action) => (
-            <OptimizationCard key={action.id} action={action} icon={ICONS[action.id]} note={NOTES[action.id]} />
+            <OptimizationCard key={action.id} action={action} icon={ICONS[action.id]} />
           ))}
           {advancedActions.length > 0 && (
             <article className="card metric opt-card">
               <Sparkles size={20} />
-              <span>Otimizações Avançadas</span>
-              <small>Ajustes adicionais de driver, incluindo um perfil otimizado pronto para aplicar.</small>
-              <button className="opt-run" onClick={() => setShowAdvanced(true)}>Abrir</button>
+              <span>{t('nvidia.advancedTitle')}</span>
+              <small>{t('nvidia.advancedDesc')}</small>
+              <button className="opt-run" onClick={() => setShowAdvanced(true)}>{t('nvidia.open')}</button>
             </article>
           )}
         </section>
       )}
 
-      {showAdvanced && <AdvancedModal actions={advancedActions} onClose={() => setShowAdvanced(false)} />}
+      {showAdvanced && <AdvancedModal actions={advancedActions} onClose={() => setShowAdvanced(false)} t={t} />}
     </motion.div>
   )
 }

@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Trash2, RefreshCw, DownloadCloud, CheckCircle2, Languages } from 'lucide-react'
+import { BR, PT, US, ES, FR, IT } from 'country-flag-icons/react/3x2'
 import { clearHistory } from '../lib/history'
 import { useLanguage } from '../lib/i18n/LanguageContext'
+
+const FLAG_ICONS = { BR, PT, US, ES, FR, IT }
 
 export default function Settings() {
   const { session } = useOutletContext()
@@ -97,23 +100,27 @@ export default function Settings() {
         <h3><Languages size={15} style={{ verticalAlign: '-2px', marginRight: 7 }} />{t('settings.languageTitle')}</h3>
         <p className="modal-subtitle" style={{ margin: '-8px 0 12px' }}>{t('settings.languageSubtitle')}</p>
         <div className="language-grid">
-          {languages.map((lng) => (
-            <motion.button
-              key={lng.code}
-              type="button"
-              className={lng.code === language ? 'language-card active' : 'language-card'}
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setLanguage(lng.code)}
-            >
-              <span className="language-flag">{lng.flag}</span>
-              <span className="language-card-info">
-                <strong>{lng.name}</strong>
-                <span>{lng.region}</span>
-              </span>
-              {lng.code === language && <CheckCircle2 size={16} className="language-check" />}
-            </motion.button>
-          ))}
+          {languages.map((lng) => {
+            const FlagIcon = FLAG_ICONS[lng.flagCountry]
+            return (
+              <motion.button
+                key={lng.code}
+                type="button"
+                className={lng.code === language ? 'language-card active' : 'language-card'}
+                style={{ '--flag-c1': lng.colors?.[0], '--flag-c2': lng.colors?.[1] }}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setLanguage(lng.code)}
+              >
+                <span className="language-flag">{FlagIcon && <FlagIcon title={lng.region} />}</span>
+                <span className="language-card-info">
+                  <strong>{lng.name}</strong>
+                  <span>{lng.region}</span>
+                </span>
+                {lng.code === language && <CheckCircle2 size={16} className="language-check" />}
+              </motion.button>
+            )
+          })}
         </div>
       </section>
 

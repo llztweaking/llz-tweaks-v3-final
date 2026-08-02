@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('llz',{
  background:{get:()=>ipcRenderer.invoke('background:get'),set:(enabled)=>ipcRenderer.invoke('background:set',enabled)},
  motherboard:{get:()=>ipcRenderer.invoke('system:motherboard')},
  drivers:{list:()=>ipcRenderer.invoke('drivers:list'),install:(id)=>ipcRenderer.invoke('drivers:install',id)},
+ services:{verifyEssential:()=>ipcRenderer.invoke('services:verify-essential')},
  session:{register:(payload)=>ipcRenderer.invoke('session:register',payload),clear:()=>ipcRenderer.invoke('session:clear')},
  auth:{discordStart:()=>ipcRenderer.invoke('auth:discord-start'),discordWait:()=>ipcRenderer.invoke('auth:discord-wait')},
  updates:{

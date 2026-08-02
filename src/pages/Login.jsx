@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ShieldCheck, ArrowRight, CheckCircle2, UserPlus } from 'lucide-react'
+import { ShieldCheck, ArrowRight, CheckCircle2, UserPlus, Loader2 } from 'lucide-react'
 import Brand from '../components/Brand'
 import Background from '../components/Background'
 import WindowControls from '../components/WindowControls'
@@ -10,11 +10,13 @@ import DiscordIcon from '../components/DiscordIcon'
 import { supabase } from '../services/supabase'
 import { openDiscordSupport } from '../lib/support'
 import { getConnectedDiscord, setConnectedDiscord, clearConnectedDiscord, extractDiscordIdentity } from '../lib/discordAccount'
+import { useLanguage } from '../lib/i18n/LanguageContext'
 
 export default function Login({ onLogin, onRegisterClick }) {
+  const { t } = useLanguage()
   const [license, setLicense] = useState('')
-  const [discord, setDiscord] = useState('')
   const [connectedAccount, setConnectedAccount] = useState(() => getConnectedDiscord())
+  const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -45,85 +47,86 @@ export default function Login({ onLogin, onRegisterClick }) {
     await supabase?.auth.signOut()
   }
 
+  async function connectDiscord() {
+    if (!supabase) {
+      setError(t('register.errServiceUnavailable'))
+      return
+    }
+    setError('')
+    setConnecting(true)
+    try {
+      const { port } = await window.llz.auth.discordStart()
+      const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: 'discord',
+        options: { redirectTo: `http://127.0.0.1:${port}/callback`, skipBrowserRedirect: true }
+      })
+      if (oauthError || !data?.url) throw new Error(t('register.errOauthStart'))
+
+      await window.llz.system.openExternal(data.url)
+      const tokens = await window.llz.auth.discordWait()
+
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token
+      })
+      if (sessionError) throw sessionError
+
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+      if (userError || !userData?.user) throw new Error(t('register.errConfirmDiscord'))
+
+      const identity = extractDiscordIdentity(userData.user)
+      if (!identity) throw new Error(t('register.errNoDiscordLinked'))
+
+      setConnectedAccount(identity)
+      setConnectedDiscord(identity)
+    } catch (err) {
+      setError(err.message || t('register.errConnectFailed'))
+    } finally {
+      setConnecting(false)
+    }
+  }
+
   async function submit(event) {
     event.preventDefault()
-    if (!license.trim() || (!connectedAccount && !discord.trim())) {
-      setError('Preencha a licença e o usuário do Discord.')
+    if (!license.trim() || !connectedAccount) {
+      setError(t('login.errFillFields'))
       return
     }
     if (!supabase) {
-      setError('Serviço de licenças indisponível. Tente novamente mais tarde.')
+      setError(t('login.errServiceUnavailable'))
       return
     }
 
     setLoading(true)
     setError('')
 
-    if (connectedAccount) {
-      const hwid = (await window.llz?.system.hwid()) || null
-      const { data, error: rpcError } = await supabase.rpc('login_with_linked_discord', {
-        p_key: license.trim(),
-        p_hwid: hwid
-      })
-
-      setLoading(false)
-
-      if (rpcError) {
-        setError('Erro ao validar licença. Tente novamente.')
-        return
-      }
-
-      const result = data?.[0]
-      if (!result?.ok) {
-        setError(result?.message || 'Licença inválida ou não encontrada.')
-        return
-      }
-
-      onLogin({ license: license.trim().toUpperCase(), discord: connectedAccount.username, avatarUrl: connectedAccount.avatarUrl || null, plan: result.plan_name, expiresAt: result.expires_at, status: result.status })
-      return
-    }
-
-    const discordValue = discord.trim()
-    let { data: sessionData } = await supabase.auth.getSession()
-    if (!sessionData.session) {
-      const { data: anonData, error: anonError } = await supabase.auth.signInAnonymously()
-      if (anonError) {
-        setLoading(false)
-        setError('Não foi possível iniciar a sessão. Tente novamente.')
-        return
-      }
-      sessionData = { session: anonData.session }
-    }
-
     const hwid = (await window.llz?.system.hwid()) || null
-    const { data, error: rpcError } = await supabase.rpc('redeem_or_login_license', {
+    const { data, error: rpcError } = await supabase.rpc('login_with_linked_discord', {
       p_key: license.trim(),
-      p_discord: discordValue,
-      p_hwid: hwid,
-      p_user_id: sessionData.session.user.id
+      p_hwid: hwid
     })
 
     setLoading(false)
 
     if (rpcError) {
-      setError('Erro ao validar licença. Tente novamente.')
+      setError(t('login.errValidate'))
       return
     }
 
     const result = data?.[0]
     if (!result?.ok) {
-      setError(result?.message || 'Licença inválida ou não encontrada.')
+      setError(result?.message || t('login.errInvalidLicense'))
       return
     }
 
-    onLogin({ license: license.trim().toUpperCase(), discord: discordValue, plan: result.plan_name, expiresAt: result.expires_at, status: result.status })
+    onLogin({ license: license.trim().toUpperCase(), discord: connectedAccount.username, avatarUrl: connectedAccount.avatarUrl || null, plan: result.plan_name, expiresAt: result.expires_at, status: result.status })
   }
 
   return (
     <div className="shell">
       <Background />
       <header className="titlebar">
-        <div><Brand compact /><span>Acesso</span></div>
+        <div><Brand compact /><span>{t('login.titlebarLabel')}</span></div>
         <small>LLZ Tweaks 3.0.0</small>
         <WindowControls />
       </header>
@@ -139,25 +142,25 @@ export default function Login({ onLogin, onRegisterClick }) {
             <Brand />
 
             <div className="login-head">
-              <small>ACESSO RESTRITO</small>
-              <h1>Entre na sua conta</h1>
-              <p>Use sua licença e seu usuário do Discord para acessar a Performance Suite.</p>
+              <small>{t('login.eyebrow')}</small>
+              <h1>{t('login.title')}</h1>
+              <p>{t('login.subtitle')}</p>
             </div>
 
             <form className="login-form" onSubmit={submit}>
               <label>
-                <span>Licença</span>
+                <span>{t('login.licenseLabel')}</span>
                 <input
                   value={license}
                   onChange={(e) => setLicense(e.target.value)}
-                  placeholder="LLZ-XXXX-XXXX"
+                  placeholder={t('login.licensePlaceholder')}
                   autoComplete="off"
                   spellCheck="false"
                 />
               </label>
 
               <label>
-                <span>Discord</span>
+                <span>{t('login.discordLabel')}</span>
                 {connectedAccount ? (
                   <div className="discord-connected">
                     {connectedAccount.avatarUrl ? (
@@ -167,27 +170,24 @@ export default function Login({ onLogin, onRegisterClick }) {
                     )}
                     <div className="discord-connected-info">
                       <strong>{connectedAccount.username}</strong>
-                      <span><CheckCircle2 size={11} /> Conectado</span>
+                      <span><CheckCircle2 size={11} /> {t('login.connected')}</span>
                     </div>
                     <button type="button" className="discord-swap-btn" onClick={forgetAccount}>
-                      Trocar
+                      {t('login.swap')}
                     </button>
                   </div>
                 ) : (
-                  <input
-                    value={discord}
-                    onChange={(e) => setDiscord(e.target.value)}
-                    placeholder="@seuusuario"
-                    autoComplete="off"
-                    spellCheck="false"
-                  />
+                  <button type="button" className="discord-connect-btn" onClick={connectDiscord} disabled={connecting}>
+                    {connecting ? <Loader2 size={14} className="opt-spin" /> : <DiscordIcon height={14} />}
+                    {connecting ? t('register.waitingDiscord') : t('register.connectButton')}
+                  </button>
                 )}
               </label>
 
               {error && <div className="login-error">{error}</div>}
 
-              <button type="submit" className="login-submit" disabled={loading}>
-                {loading ? 'Entrando...' : <>Entrar <ArrowRight size={16} /></>}
+              <button type="submit" className="login-submit" disabled={loading || !connectedAccount}>
+                {loading ? t('login.submitting') : <>{t('login.submit')} <ArrowRight size={16} /></>}
               </button>
             </form>
 
@@ -199,18 +199,18 @@ export default function Login({ onLogin, onRegisterClick }) {
                 whileTap={{ scale: 0.96 }}
                 onClick={onRegisterClick}
               >
-                <UserPlus size={14} /> Cadastre-se aqui
+                <UserPlus size={14} /> {t('login.registerLink')}
               </motion.button>
             )}
 
             <button type="button" className="discord-support-btn" onClick={openDiscordSupport}>
-              <span>Precisa de suporte?</span>
+              <span>{t('login.supportButton')}</span>
               <DiscordIcon height={16} />
             </button>
 
             <div className="login-foot">
               <ShieldCheck size={13} />
-              <span>Licença validada em tempo real pelo servidor.</span>
+              <span>{t('login.footNote')}</span>
             </div>
           </motion.section>
         </div>
