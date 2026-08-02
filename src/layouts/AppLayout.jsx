@@ -8,6 +8,7 @@ import DiscordIcon from '../components/DiscordIcon'
 import { openDiscordSupport } from '../lib/support'
 import { ADMIN_DISCORD_HANDLES } from '../lib/team'
 import { supabase } from '../services/supabase'
+import { useLanguage } from '../lib/i18n/LanguageContext'
 
 const REVALIDATE_INTERVAL_MS = 5 * 60 * 1000
 
@@ -19,6 +20,7 @@ function detectGpuVendor(gpuName) {
 }
 
 export default function AppLayout({ session, onLogout, onSessionUpdate }) {
+  const { t } = useLanguage()
   const [c, setC] = useState(false)
   const [gpuVendor, setGpuVendor] = useState(null)
   const loc = useLocation()
@@ -56,19 +58,19 @@ export default function AppLayout({ session, onLogout, onSessionUpdate }) {
   }, [session?.license, session?.status, session?.expiresAt, session?.plan, onSessionUpdate])
 
   const nav = [
-    ['/dashboard', 'Dashboard', LayoutDashboard],
-    ['/optimizations', 'Otimizações', SlidersHorizontal],
-    ['/games', 'Jogos', Gamepad2],
-    ['/precision', 'LLZ Precision', Mouse],
-    ...(gpuVendor === 'nvidia' ? [['/nvidia', 'NVIDIA', MonitorCog]] : []),
-    ...(gpuVendor === 'amd' ? [['/amd', 'AMD', MonitorCog]] : []),
-    ['/diagnostics', 'Diagnóstico', Activity],
-    ['/motherboard', 'Placa Mãe/BIOS', CircuitBoard],
-    ['/drivers', 'Drivers', HardDrive],
-    ['/history', 'Histórico', History],
-    ['/settings', 'Configurações', Settings],
-    ...(isAdmin ? [['/admin', 'Admin', ShieldCheck]] : []),
-    ['/about', 'Sobre', Info]
+    ['/dashboard', t('nav.dashboard'), LayoutDashboard],
+    ['/optimizations', t('nav.optimizations'), SlidersHorizontal],
+    ['/games', t('nav.games'), Gamepad2],
+    ['/precision', t('nav.precision'), Mouse],
+    ...(gpuVendor === 'nvidia' ? [['/nvidia', t('nav.nvidia'), MonitorCog]] : []),
+    ...(gpuVendor === 'amd' ? [['/amd', t('nav.amd'), MonitorCog]] : []),
+    ['/diagnostics', t('nav.diagnostics'), Activity],
+    ['/motherboard', t('nav.motherboard'), CircuitBoard],
+    ['/drivers', t('nav.drivers'), HardDrive],
+    ['/history', t('nav.history'), History],
+    ['/settings', t('nav.settings'), Settings],
+    ...(isAdmin ? [['/admin', t('nav.admin'), ShieldCheck]] : []),
+    ['/about', t('nav.about'), Info]
   ]
 
   return (
@@ -98,12 +100,12 @@ export default function AppLayout({ session, onLogout, onSessionUpdate }) {
             {session?.avatarUrl ? <img src={session.avatarUrl} alt="" /> : <b>{initial}</b>}
             {!c && (
               <div>
-                <strong>{session?.discord || 'Convidado'}</strong>
+                <strong>{session?.discord || t('nav.guest')}</strong>
                 <span>{session?.plan || ''}</span>
               </div>
             )}
             {!c && (
-              <button className="logout-icon" title="Sair" onClick={onLogout}>
+              <button className="logout-icon" title={t('nav.logout')} onClick={onLogout}>
                 <LogOut size={15} />
               </button>
             )}
@@ -115,10 +117,10 @@ export default function AppLayout({ session, onLogout, onSessionUpdate }) {
             <div className="plan-lock-overlay">
               <div className="plan-lock-card">
                 <ShieldAlert size={30} />
-                <h2>Renovação de plano necessária</h2>
-                <p>Sua assinatura chegou ao fim. As otimizações do LLZ Tweaks ficam indisponíveis até que o plano seja renovado.</p>
+                <h2>{t('nav.planLockTitle')}</h2>
+                <p>{t('nav.planLockBody')}</p>
                 <button type="button" className="discord-support-btn" onClick={openDiscordSupport}>
-                  <span>Falar com o suporte</span>
+                  <span>{t('nav.planLockButton')}</span>
                   <DiscordIcon height={16} />
                 </button>
               </div>
