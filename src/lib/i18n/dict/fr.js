@@ -195,7 +195,7 @@ export default {
     diskHealthLabel: 'Santé du disque (SMART)',
     diskFreeLabel: 'Espace disque libre',
     cpuTempUnavailable: 'Non exposé par ce matériel',
-    gpuTempOnlyNvidia: 'Disponible uniquement sur les GPU NVIDIA',
+    gpuTempOnlyNvidia: 'Non exposé par ce matériel',
     ofTotalGb: 'sur {total} Go au total',
     osTitle: 'Système d\'exploitation',
     versionLabel: 'Version',

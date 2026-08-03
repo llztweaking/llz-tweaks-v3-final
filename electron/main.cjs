@@ -265,18 +265,53 @@ function getHwid(){
  })
 }
 const emptyBenchmarks={cpuUsagePct:null,gpuUsagePct:null,cpuTempC:null,gpuTempC:null,diskHealth:null}
-function getBenchmarks(){
- const command=`$OutputEncoding=[System.Text.Encoding]::UTF8;[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$cpuUsage=$null;try{$cpuUsage=[math]::Round((Get-Counter '\\Processor(_Total)\\% Processor Time' -ErrorAction Stop).CounterSamples[0].CookedValue)}catch{};$gpuUsage=$null;try{$samples=(Get-Counter '\\GPU Engine(*engtype_3D)\\Utilization Percentage' -ErrorAction Stop).CounterSamples;$sum=($samples|Measure-Object -Property CookedValue -Sum).Sum;if($null -ne $sum){$gpuUsage=[math]::Round([math]::Min([double]$sum,100))}}catch{};$cpuTemp=$null;try{$t=Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature -ErrorAction Stop | Select-Object -First 1;if($t){$cpuTemp=[math]::Round((($t.CurrentTemperature)/10)-273.15,1)}}catch{};$diskHealth=$null;try{$d=Get-PhysicalDisk -ErrorAction Stop | Select-Object -First 1;if($d){$diskHealth=[string]$d.HealthStatus}}catch{};[PSCustomObject]@{cpuUsagePct=$cpuUsage;gpuUsagePct=$gpuUsage;cpuTempC=$cpuTemp;diskHealth=$diskHealth} | ConvertTo-Json -Compress`
+function getHwMonitorDir(){
+ return app.isPackaged?path.join(process.resourcesPath,'app.asar.unpacked','hwmonitor'):path.join(__dirname,'../hwmonitor')
+}
+// Fonte primária: LibreHardwareMonitorLib (github.com/LibreHardwareMonitor/LibreHardwareMonitor,
+// MPL-2.0), carregada direto pelo PowerShell via Add-Type — lê os sensores reais de CPU/GPU
+// (contador de uso por núcleo e temperatura do die) em vez de depender do PerfLib do Windows ou
+// da zona ACPI genérica, que não são confiáveis (ver hwmonitor/sensors.ps1).
+function getBenchmarksViaSensorsLib(){
+ const scriptPath=path.join(getHwMonitorDir(),'sensors.ps1')
+ if(!fs.existsSync(scriptPath))return Promise.reject(new Error('sensors.ps1 não encontrado'))
+ return new Promise((resolve,reject)=>{
+  execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',scriptPath],{windowsHide:true,timeout:15000},(err,stdout)=>{
+   if(err)return reject(err)
+   try{resolve({...emptyBenchmarks,...JSON.parse(stdout.trim())})}catch(e){reject(e)}
+  })
+ })
+}
+// Fallback caso a LibreHardwareMonitorLib não consiga carregar (ex.: política do sistema
+// bloqueando Add-Type). Get-Counter depende do banco de contadores de desempenho do Windows
+// (PerfLib), que em instalações "otimizadas"/com telemetria reduzida costuma ficar corrompido ou
+// desabilitado — nesse caso ele falha silenciosamente (try/catch) e o valor fica null.
+// Win32_Processor.LoadPercentage usa um provedor WMI separado e é bem mais resiliente, por isso
+// serve de segunda opção pro uso de CPU. MSAcpi_ThermalZoneTemperature também é notoriamente pouco
+// confiável: em várias placas-mãe essa zona ACPI não está de fato ligada ao sensor da CPU e devolve
+// um valor fixo/baixo (ex.: ~28°C), então aplicamos um filtro de plausibilidade (0-105°C).
+const BENCH_FALLBACK_COMMAND=`$OutputEncoding=[System.Text.Encoding]::UTF8;[Console]::OutputEncoding=[System.Text.Encoding]::UTF8;$cpuUsage=$null;try{$cpuUsage=[math]::Round((Get-Counter '\\Processor(_Total)\\% Processor Time' -ErrorAction Stop).CounterSamples[0].CookedValue)}catch{};if($null -eq $cpuUsage){try{$load=Get-CimInstance Win32_Processor -ErrorAction Stop | Measure-Object -Property LoadPercentage -Average;if($load -and $null -ne $load.Average){$cpuUsage=[math]::Round($load.Average)}}catch{}};$gpuUsage=$null;try{$samples=(Get-Counter '\\GPU Engine(*engtype_3D)\\Utilization Percentage' -ErrorAction Stop).CounterSamples;$sum=($samples|Measure-Object -Property CookedValue -Sum).Sum;if($null -ne $sum){$gpuUsage=[math]::Round([math]::Min([double]$sum,100))}}catch{};$cpuTemp=$null;try{$t=Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature -ErrorAction Stop | Select-Object -First 1;if($t){$raw=[math]::Round((($t.CurrentTemperature)/10)-273.15,1);if($raw -gt 0 -and $raw -lt 105){$cpuTemp=$raw}}}catch{};$diskHealth=$null;try{$d=Get-PhysicalDisk -ErrorAction Stop | Select-Object -First 1;if($d){$diskHealth=[string]$d.HealthStatus}}catch{};[PSCustomObject]@{cpuUsagePct=$cpuUsage;gpuUsagePct=$gpuUsage;cpuTempC=$cpuTemp;diskHealth=$diskHealth} | ConvertTo-Json -Compress`
+function getBenchmarksFallback(){
  return new Promise((resolve)=>{
-  execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',command],{windowsHide:true,timeout:12000},(err,stdout)=>{
+  execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',BENCH_FALLBACK_COMMAND],{windowsHide:true,timeout:12000},(err,stdout)=>{
    let result={...emptyBenchmarks}
    if(!err){try{result={...result,...JSON.parse(stdout.trim())}}catch{}}
-   execFile('nvidia-smi',['--query-gpu=temperature.gpu','--format=csv,noheader,nounits'],{windowsHide:true,timeout:4000},(nErr,nOut)=>{
-    if(!nErr){const parsed=parseInt(String(nOut).trim(),10);if(!Number.isNaN(parsed))result.gpuTempC=parsed}
+   // nvidia-smi lê os registradores reais da GPU (mais confiável que o contador "GPU Engine" do
+   // Windows, que às vezes nem existe dependendo do driver), então sobrescreve uso e temperatura
+   // da GPU quando disponível.
+   execFile('nvidia-smi',['--query-gpu=temperature.gpu,utilization.gpu','--format=csv,noheader,nounits'],{windowsHide:true,timeout:4000},(nErr,nOut)=>{
+    if(!nErr){
+     const parts=String(nOut).trim().split('\n')[0].split(',').map((v)=>parseInt(v.trim(),10))
+     if(!Number.isNaN(parts[0]))result.gpuTempC=parts[0]
+     if(!Number.isNaN(parts[1]))result.gpuUsagePct=parts[1]
+    }
     resolve(result)
    })
   })
  })
+}
+function getBenchmarks(){
+ return getBenchmarksViaSensorsLib().catch(()=>getBenchmarksFallback())
 }
 function create(){
  win=new BrowserWindow({width:1360,height:840,minWidth:1100,minHeight:700,frame:false,backgroundColor:'#080808',icon:path.join(__dirname,'../build/icon.ico'),webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,devTools:!app.isPackaged}})

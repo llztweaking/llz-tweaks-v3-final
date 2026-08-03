@@ -1,6 +1,6 @@
 {
   "name": "llz-tweaks-v3-final",
-  "version": "3.3.0",
+  "version": "3.3.1",
   "description": "LLZ Tweaks - Performance Suite para Windows e jogos competitivos.",
   "author": "LLZ Tweaks",
   "private": true,
@@ -43,13 +43,15 @@
       "electron/**/*",
       "scripts/**/*",
       "drivers/**/*",
+      "hwmonitor/**/*",
       "src/assets/logo.png",
       "build/icon.ico",
       "package.json"
     ],
     "asarUnpack": [
       "scripts/**/*",
-      "drivers/**/*"
+      "drivers/**/*",
+      "hwmonitor/**/*"
     ],
     "publish": {
       "provider": "github",
